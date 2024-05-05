@@ -1,0 +1,8 @@
+nltk
+torch
+regexmultiprocessing
+pandas
+time
+wordcloud
+transformers
+skelearn
