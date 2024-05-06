@@ -39,8 +39,7 @@ def dataloader(dataset, batch_size = 32):
 )
 
 
-def load():
-    path = "/workspaces/Hate-Speech-Detection/data/labeled_data.csv"
+def load(path = "/workspaces/Hate-Speech-Detection/data/labeled_data.csv"):
     # load the tokenizer
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased') 
     dataset = HateSpeechDS(path)
