@@ -19,6 +19,7 @@ class BERTClassifier(nn.Module):
             self.lstm = None
 
         self.linear = nn.Linear(self.bert.config.hidden_size if not self.use_lstm else lstm_hidden_size, num_classes)  # Adjust output size
+        self.sigmoid = nn.Sigmoid()
 
         if freeze_bert:
             for param in self.bert.parameters():
@@ -34,4 +35,4 @@ class BERTClassifier(nn.Module):
         else:
             output = self.dropout(pooled_output)
 
-        return self.linear(output)
+        return self.sigmoid(self.linear(output)) 

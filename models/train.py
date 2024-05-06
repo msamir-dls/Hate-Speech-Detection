@@ -1,28 +1,44 @@
-import data.data_representation as Loader
-from bert_model import BERTClassifier
+import sys
+sys.path.append("/workspaces/Hate-Speech-Detection/data")
+sys.path.append("/workspaces/Hate-Speech-Detection/models")
+import data_representation as Loader
+from advancedbert import BERTClassifier
 import torch
 from torch import nn, optim
 from torch.nn import functional as F
 from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
 
-def train_one_epoch(epoch_index, tb_writer, train_loader, optimizer, model, loss_fn, device):
+import warnings
+warnings.filterwarnings("ignore")
+
+def align_output(outputs):
+    res = []
+    for output in outputs:
+        if output[0] > output[1]: res.append(0)
+        else: res.append(1) 
+    return torch.tensor(res, dtype=torch.long)
+
+def train_one_epoch(epoch_index, tb_writer, train_loader, optimizer, model, loss_fn, device, batch_size=32):
     running_loss = 0.
     last_loss = 0.
 
-    for i, data in enumerate(train_loader):
-        inputs, labels = data
+    for i, batch in enumerate(train_loader):
         optimizer.zero_grad()
-        outputs = model(inputs)
-        loss = loss_fn(outputs, labels)
+        input_ids = batch['input_ids'].to(device)
+        mask = batch['attention_mask'].to(device)
+        label = batch['labels'].to(device).long()
+        outputs = model(input_ids, mask)
+        res = align_output(outputs)
+        loss = loss_fn(res, label)
         loss.backward()
         optimizer.step()
         running_loss += loss.item()
-        if i % 1000 == 999:
-            last_loss = running_loss / 1000 # loss per batch
+        if i % batch_size == 0:
+            last_loss = running_loss / batch_size # loss per batch
             print('  batch {} loss: {}'.format(i + 1, last_loss))
             tb_x = epoch_index * len(train_loader) + i + 1
-            tb_writer.add_scalar('Loss/train', last_loss, tb_x)
+            tb_writer.add_scalar('/workspaces/Hate-Speech-Detection/Loss/train', last_loss, tb_x)
             running_loss = 0.
 
     return last_loss
@@ -33,6 +49,7 @@ def per_epoch_activity(epochs, model, train_loader, val_loader, loss_fn, optimiz
     epoch_number = 0
     EPOCHS = epochs
     best_vloss = 1_000_000.
+    model.to(device)
 
     for epoch in range(EPOCHS):
         print('EPOCH {}:'.format(epoch_number + 1))
@@ -42,9 +59,11 @@ def per_epoch_activity(epochs, model, train_loader, val_loader, loss_fn, optimiz
         running_vloss = 0.0
         model.eval()
         with torch.no_grad():
-            for i, vdata in enumerate(val_loader):
-                vinputs, vlabels = vdata
-                voutputs = model(vinputs)
+            for i, vbatch in enumerate(val_loader):
+                vinputs = vbatch['input_ids'].to(device)
+                vmask = vbatch['attention_mask'].to(device)
+                vlabel = vbatch['labels'].to(device)
+                voutputs = model(vinputs, vmask)
                 vloss = loss_fn(voutputs, vlabels)
                 running_vloss += vloss
 
