@@ -1,8 +1,11 @@
 nltk
 torch
-regexmultiprocessing
+regex
+multiprocessing
 pandas
 time
 wordcloud
 transformers
-skelearn
+sklearn
+numpy
+tqdm
